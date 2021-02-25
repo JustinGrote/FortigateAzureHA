@@ -41,7 +41,7 @@ param fgVersion string {
 }
 param vmSize string {
   metadata: {
-    description: 'Virtual Machine size selection'
+    description: 'Specify an alternate VM size. The VM size must allow for at least two NICs, and four are recommended'
   }
   default: 'Standard_DS3_v2'
 }
