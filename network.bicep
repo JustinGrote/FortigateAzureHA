@@ -1,4 +1,4 @@
-param vnetName string = 'TestVNet'
+param vnetName string
 param location string = resourceGroup().location
 param vnetAddressPrefixes array {
   metadata: {

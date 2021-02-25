@@ -77,7 +77,7 @@ param FortiGateAdditionalConfig string {
   }
   default: ''
 }
-param instanceType string {
+param vmSize string {
   metadata: {
     description: 'Virtual Machine size selection'
   }
@@ -218,7 +218,13 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
   }
   properties: {
     hardwareProfile: {
-      vmSize: instanceType
+      vmSize: vmSize
+    }
+    //Spot instance settings
+    priority: empty(availabilitySetId) ? 'Spot' : 'Regular' 
+    evictionPolicy: empty(availabilitySetId) ? 'Deallocate' : json('null')
+    billingProfile: {
+      maxPrice: empty(availabilitySetId) ? -1 : json('null')
     }
     availabilitySet: empty(availabilitySetId) ? json('null') : availabilitySet
     osProfile: {

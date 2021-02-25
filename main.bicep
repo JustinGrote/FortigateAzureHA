@@ -39,6 +39,12 @@ param fgVersion string {
   }
   default: 'latest'
 }
+param vmSize string {
+  metadata: {
+    description: 'Virtual Machine size selection'
+  }
+  default: 'Standard_DS3_v2'
+}
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
@@ -102,6 +108,9 @@ resource fgSet 'Microsoft.Compute/availabilitySets@2019-07-01' = if (!useSpotIns
 
 module network './network.bicep' = {
   name: '${deploymentName}-network'
+  params: {
+    vnetName: fgNamePrefix
+  }
 }
 
 module loadbalancer './loadbalancer.bicep' = {
@@ -119,6 +128,7 @@ module fortigateA './fortigate.bicep' = {
   params: {
     location: location
     vmName: '${fgNamePrefix}A'
+    vmSize: vmSize
     adminUsername: adminUsername
     adminPassword: adminPassword
     FortigateImageSKU: fgImageSku
@@ -135,6 +145,7 @@ module fortigateB './fortigate.bicep' = {
   params: {
     location: location
     vmName: '${fgNamePrefix}B'
+    vmSize: vmSize
     adminUsername: adminUsername
     adminPassword: adminPassword
     FortigateImageSKU: fgImageSku
