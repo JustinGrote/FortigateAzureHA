@@ -183,19 +183,20 @@ resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   }
 }
 
-module externalGateway './getSubnetGateway.bicep' = {
-  name: '${deployment().name}-getSubnet-externalGateway'
-  params: {
-    subnetAddress: externalSubnet.properties.addressPrefix
-  }
-}
+// Unnecessary due to DHCP. Maybe add option for vNet route?
+// module externalGateway './getSubnetGateway.bicep' = {
+//   name: '${deployment().name}-getSubnet-externalGateway'
+//   params: {
+//     subnetAddress: externalSubnet.properties.addressPrefix
+//   }
+// }
 
-module internalGateway './getSubnetGateway.bicep' = {
-  name: '${deployment().name}-getSubnet-internalGateway'
-  params: {
-    subnetAddress: internalSubnet.properties.addressPrefix
-  }
-}
+// module internalGateway './getSubnetGateway.bicep' = {
+//   name: '${deployment().name}-getSubnet-internalGateway'
+//   params: {
+//     subnetAddress: internalSubnet.properties.addressPrefix
+//   }
+// }
 
 //FIXME: Needs multiline syntax from .3
 var fortigateConfig = base64('config system probe-response\n set mode http-probe\nend\nconfig system interface\n edit port1\n  set description ${externalSubnet.name}\n  append allowaccess probe-response\n next\n edit port2\n  set description ${internalSubnet.name}\n  set allowaccess ping probe-response\n next\nend\nconfig sys admin\n edit admin\n  set password ${adminPassword}\n next\nend\n${FortiGateAdditionalConfig}')
