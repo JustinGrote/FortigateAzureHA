@@ -48,6 +48,30 @@ param vmSize string {
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
+param fgaManagementHttpPort int {
+  metadata: {
+    description: 'The port to use for accessing the http management interface of the first Fortigate'
+  }
+  default: 50443
+}
+param fgbManagementHttpPort int {
+  metadata: {
+    description: 'The port to use for accessing the http management interface of the second Fortigate'
+  }
+  default: 51443
+}
+param fgaManagementSshPort int {
+  metadata: {
+    description: 'The port to use for accessing the ssh management interface of the first Fortigate'
+  }
+  default: 50022
+}
+param fgbManagementSshPort int {
+  metadata: {
+    description: 'The port to use for accessing the ssh management interface of the first Fortigate'
+  }
+  default: 51022
+}
 
 var deploymentName = deployment().name
 
@@ -117,6 +141,10 @@ module loadbalancer './loadbalancer.bicep' = {
   name: '${deploymentName}-loadbalancer'
   params: {
     lbName: fgNamePrefix
+    fgaManagementHttpPort: fgaManagementHttpPort
+    fgaManagementSshPort: fgaManagementSshPort
+    fgbManagementHttpPort: fgbManagementHttpPort
+    fgbManagementSshPort: fgbManagementSshPort
     internalSubnet: network.outputs.internalSubnet
     externalSubnet: network.outputs.externalSubnet
   }
@@ -157,3 +185,31 @@ module fortigateB './fortigate.bicep' = {
     internalSubnet: network.outputs.internalSubnet
   }
 }
+
+var fqdn = loadbalancer.outputs.publicIpFqdn
+var baseUri = 'https://${fqdn}'
+var baseSsh = 'ssh ${adminUsername}@${fqdn}'
+output fgManagementUser string = adminUsername
+output fgaManagementUri string = '${baseUri}:${fgaManagementHttpPort}'
+output fgbManagementUri string = '${baseUri}:${fgbManagementHttpPort}'
+output fgaManagementSshCommand string = '${baseSsh} -p ${fgaManagementSshPort}' 
+output fgbManagementSshCommand string = '${baseSsh} -p ${fgbManagementSshPort}'
+// TODO: fgaManagementSSHConfig once multiline support is added
+// "fgaManagementSSHConfig": {
+//   "type": "String",
+//   "value": "[concat(
+//       'Host ', variables('compute_VM_fga_Name'), '\n',
+//       '  HostName ', reference(variables('publicIPId')).dnsSettings.fqdn, '\n',
+//       '  Port ', parameters('fgaManagementSshPort'),'\n',
+//       '  User ', parameters('adminUsername')
+//   )]"
+// },
+// "fgbManagementSSHConfig": {
+//   "type": "String",
+//   "value": "[concat(
+//       'Host ', variables('compute_VM_fgb_Name'), '\n',
+//       '  HostName ', reference(variables('publicIPId')).dnsSettings.fqdn, '\n',
+//       '  Port ', parameters('fgbManagementSshPort'),'\n',
+//       '  User ', parameters('adminUsername')
+//   )]"
+// }

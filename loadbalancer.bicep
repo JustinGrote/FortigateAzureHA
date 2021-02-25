@@ -288,3 +288,5 @@ output fortigateBLoadBalancerInfo object = {
     }
   ]
 }
+
+output publicIpFqdn string = pip.properties.dnsSettings.domainNameLabel
