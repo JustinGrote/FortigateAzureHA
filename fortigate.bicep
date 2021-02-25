@@ -34,6 +34,7 @@ param availabilitySetId string {
   metadata: {
     description: 'Availability Set that the fortigate should belong to'
   }
+  default: ''
 }
 param loadBalancerInfo object {
   metadata: {
@@ -201,6 +202,9 @@ resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
 //FIXME: Needs multiline syntax from .3
 var fortigateConfig = base64('config system probe-response\n set mode http-probe\nend\nconfig system interface\n edit port1\n  set description ${externalSubnet.name}\n  append allowaccess probe-response\n next\n edit port2\n  set description ${internalSubnet.name}\n  set allowaccess ping probe-response\n next\nend\nconfig sys admin\n edit admin\n  set password ${adminPassword}\n next\nend\n${FortiGateAdditionalConfig}')
 
+var availabilitySet = {
+  id: availabilitySetId
+}
 resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
   name: vmName
   location: location
@@ -216,14 +220,12 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
     hardwareProfile: {
       vmSize: instanceType
     }
-    availabilitySet: {
-      id: availabilitySetId
-    }
+    availabilitySet: empty(availabilitySetId) ? json('null') : availabilitySet
     osProfile: {
       computerName: vmName
       adminUsername: adminUsername
       adminPassword: adminPassword
-      linuxConfiguration: (empty(adminPublicKey) ? json('null') : vmPublicKeyConfiguration)
+      linuxConfiguration: empty(adminPublicKey) ? json('null') : vmPublicKeyConfiguration
       customData: fortigateConfig
     }
     storageProfile: {

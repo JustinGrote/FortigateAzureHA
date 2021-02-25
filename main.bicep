@@ -27,6 +27,12 @@ param bringYourOwnLicense bool {
   }
   default: false
 }
+param useSpotInstances bool {
+  metadata: {
+    description: 'Use spot instances to save cost at the expense of potential reduced availability. Availability set will be disabled with this option'
+  }
+  default: false
+}
 param fgVersion string {
   metadata: {
     description: 'Specify the version to use e.g. 6.4.2. Defaults to latest version'
@@ -79,7 +85,7 @@ resource fgAdminNsg 'Microsoft.Network/networkSecurityGroups@2020-05-01' = {
   }
 }
 
-resource fgSet 'Microsoft.Compute/availabilitySets@2019-07-01' = {
+resource fgSet 'Microsoft.Compute/availabilitySets@2019-07-01' = if (!useSpotInstances) {
   name: fgNamePrefix
   location: location
   tags: {
@@ -118,7 +124,7 @@ module fortigateA './fortigate.bicep' = {
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: fgVersion
     adminNsgId: fgAdminNsg.id
-    availabilitySetId: fgSet.id
+    availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateALoadBalancerInfo
     externalSubnet: network.outputs.externalSubnet
     internalSubnet: network.outputs.internalSubnet
@@ -134,7 +140,7 @@ module fortigateB './fortigate.bicep' = {
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: fgVersion
     adminNsgId: fgAdminNsg.id
-    availabilitySetId: fgSet.id
+    availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateBLoadBalancerInfo
     externalSubnet: network.outputs.externalSubnet
     internalSubnet: network.outputs.internalSubnet
