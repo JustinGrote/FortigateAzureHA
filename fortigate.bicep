@@ -30,12 +30,6 @@ param internalSubnet object {
     description: 'Subnet for the internal (port2) interface'
   }
 }
-param availabilitySetId string {
-  metadata: {
-    description: 'Availability Set that the fortigate should belong to'
-  }
-  default: ''
-}
 param loadBalancerInfo object {
   metadata: {
     description: 'Load balancer information from the fortigate loadbalancer module'
@@ -98,6 +92,25 @@ param vmLogDiskSizeGB int {
   }
   default: 30
 }
+param externalSubnetIP string {
+  metadata: {
+    description: 'IP Address for the external (port1) interface in 1.2.3.4 format.'
+  }
+  default: ''
+}
+param internalSubnetIP string {
+  metadata: {
+    description: 'IP Address for the internal (port2) interface in 1.2.3.4 format.'
+  }
+  default: ''
+}
+param availabilitySetId string {
+  metadata: {
+    description: 'Availability Set that the fortigate should belong to'
+  }
+  default: ''
+}
+
 var vmDiagnosticStorageName = toLower(vmName)
 var vmPublicKeyConfiguration = {
   ssh: {
@@ -110,7 +123,6 @@ var vmPublicKeyConfiguration = {
   }
 }
 
-
 resource nic1 'Microsoft.Network/networkInterfaces@2020-05-01' = {
   name: '${vmName}-port1'
   location: location
@@ -122,7 +134,8 @@ resource nic1 'Microsoft.Network/networkInterfaces@2020-05-01' = {
       {
         name: internalSubnet.name
         properties: {
-          privateIPAllocationMethod: 'Dynamic'
+          privateIPAllocationMethod: empty(internalSubnetIP) ? 'Dynamic' : 'Static' 
+          privateIPAddress: empty(internalSubnetIP) ? json('null') : internalSubnetIP
           subnet: {
             id: internalSubnet.id
           }
@@ -161,7 +174,8 @@ resource nic2 'Microsoft.Network/networkInterfaces@2020-05-01' = {
       {
         name: externalSubnet.Name
         properties: {
-          privateIPAllocationMethod: 'Dynamic'
+          privateIPAllocationMethod: empty(externalSubnetIP) ? 'Dynamic' : 'Static' 
+          privateIPAddress: empty(externalSubnetIP) ? json('null') : externalSubnetIP
           subnet: {
             id: externalSubnet.Id
           }

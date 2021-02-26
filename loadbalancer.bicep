@@ -30,6 +30,12 @@ param publicIPAddressName string {
   }
   default: lbName
 }
+param lbInternalSubnetIP string {
+  metadata: {
+    description: 'The port to use for accessing the http management interface of the first Fortigate'
+  }
+  default: ''
+}
 param fortimanagerFqdn string {
   metadata: {
     description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
@@ -196,7 +202,8 @@ resource internalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
       {
         name: internalLBFEName
         properties: {
-          privateIPAllocationMethod: 'Dynamic'
+          privateIPAllocationMethod: empty(lbInternalSubnetIP) ? 'Dynamic' : 'Static'
+          privateIPAddress: empty(lbInternalSubnetIP) ? json('null') : lbInternalSubnetIP
           subnet: {
             id: internalSubnet.id
           }

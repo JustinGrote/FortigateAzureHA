@@ -69,6 +69,12 @@ param vmSize string {
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
+param lbInternalSubnetIP string {
+  metadata: {
+    description: 'IP address of the internal load balancer port. This normally does not need to be configured but it is where all traffic flows to via the route table rule'
+  }
+  default: ''
+}
 param fgaManagementHttpPort int {
   metadata: {
     description: 'The port to use for accessing the http management interface of the first Fortigate'
@@ -92,6 +98,30 @@ param fgbManagementSshPort int {
     description: 'The port to use for accessing the ssh management interface of the first Fortigate'
   }
   default: 51022
+}
+param fgaExternalSubnetIP string {
+  metadata: {
+    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
+  }
+  default: ''
+}
+param fgaInternalSubnetIP string {
+  metadata: {
+    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
+  }
+  default: ''
+}
+param fgbExternalSubnetIP string {
+  metadata: {
+    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
+  }
+  default: ''
+}
+param fgbInternalSubnetIP string {
+  metadata: {
+    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
+  }
+  default: ''
 }
 param externalSubnetName string {
   metadata: {
@@ -202,7 +232,7 @@ resource fgSet 'Microsoft.Compute/availabilitySets@2019-07-01' = if (!useSpotIns
   }
 }
 
-module network './network.bicep' = if (empty(vnetName)) {
+module network 'network.bicep' = if (empty(vnetName)) {
   name: '${deploymentName}-network'
   params: {
     vnetName: fgNamePrefix
@@ -227,13 +257,14 @@ module loadbalancer './loadbalancer.bicep' = {
     internalSubnet: internalSubnet
     externalSubnet: externalSubnet
     publicIPID: publicIPID
+    lbInternalSubnetIP: lbInternalSubnetIP
   }
 }
 
 var fgImageSku = bringYourOwnLicense ? 'fortinet_fg-vm' : 'fortinet_fg-vm_payg_20190624'
 
 // TODO: Build both with a loop once bicep 0.4 is released
-module fortigateA './fortigate.bicep' = {
+module fortigateA 'fortigate.bicep' = {
   name: '${deploymentName}-fortigateA'
   params: {
     location: location
@@ -249,9 +280,12 @@ module fortigateA './fortigate.bicep' = {
     loadBalancerInfo: loadbalancer.outputs.fortigateALoadBalancerInfo
     externalSubnet: externalSubnet
     internalSubnet: internalSubnet
+    externalSubnetIP: !empty(fgaExternalSubnetIP) ? fgaExternalSubnetIP : ''
+    internalSubnetIP: !empty(fgaInternalSubnetIP) ? fgaInternalSubnetIP : ''
   }
 }
-module fortigateB './fortigate.bicep' = {
+
+module fortigateB 'fortigate.bicep' = {
   name: '${deploymentName}-fortigateB'
   params: {
     location: location
@@ -267,6 +301,8 @@ module fortigateB './fortigate.bicep' = {
     loadBalancerInfo: loadbalancer.outputs.fortigateBLoadBalancerInfo
     externalSubnet: externalSubnet
     internalSubnet: internalSubnet
+    externalSubnetIP: !empty(fgbExternalSubnetIP) ? fgbExternalSubnetIP : ''
+    internalSubnetIP: !empty(fgbInternalSubnetIP) ? fgbInternalSubnetIP : ''
   }
 }
 
