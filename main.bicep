@@ -94,6 +94,34 @@ param fgbManagementSshPort int {
   default: 51022
 }
 
+// Existing vNet Scenario options
+param vnetName string {
+  metadata: {
+    description: 'Specify the name of an existing vnet within the subscription to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option, as well as vnetResourceGroupName if the vnet is not in the same resource group as this deployment'
+  }
+  default: ''
+}
+param vnetResourceGroupName string {
+  metadata: {
+    description: 'Specify the resource group where the existing vnet resides. You must specify the internalSubnetName and externalSubnetName options if you specify this option'
+  }
+  default: resourceGroup().name
+}
+param internalSubnetName string {
+  metadata: {
+    description: 'Specify the name of the internal subnet. The port1 interface will be given this name'
+  }
+  default: 'Internal'
+}
+param externalSubnetName string {
+  metadata: {
+    description: 'Specify the ID of an existing vnet to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option'
+  }
+  default: 'External'
+}
+
+
+
 var deploymentName = deployment().name
 
 resource fgAdminNsg 'Microsoft.Network/networkSecurityGroups@2020-05-01' = {
@@ -151,13 +179,17 @@ resource fgSet 'Microsoft.Compute/availabilitySets@2019-07-01' = if (!useSpotIns
   }
 }
 
-module network './network.bicep' = {
+module network './network.bicep' = if (empty(vnetName)) {
   name: '${deploymentName}-network'
   params: {
     vnetName: fgNamePrefix
+    internalSubnetName: internalSubnetName
+    externalSubnetName: externalSubnetName
   }
 }
 
+var internalSubnet = empty(network.outputs.internalSubnet) ? reference(resourceId(vnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', vnetName, internalSubnetName),'2020-07-01') : network.outputs.internalSubnet 
+var externalSubnet = empty(network.outputs.externalSubnet) ? reference(resourceId(vnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', vnetName, externalSubnetName),'2020-07-01') : network.outputs.externalSubnet
 module loadbalancer './loadbalancer.bicep' = {
   name: '${deploymentName}-loadbalancer'
   params: {
@@ -166,8 +198,8 @@ module loadbalancer './loadbalancer.bicep' = {
     fgaManagementSshPort: fgaManagementSshPort
     fgbManagementHttpPort: fgbManagementHttpPort
     fgbManagementSshPort: fgbManagementSshPort
-    internalSubnet: network.outputs.internalSubnet
-    externalSubnet: network.outputs.externalSubnet
+    internalSubnet: internalSubnet
+    externalSubnet: externalSubnet
     publicIPID: publicIPID
   }
 }
@@ -189,8 +221,8 @@ module fortigateA './fortigate.bicep' = {
     adminNsgId: fgAdminNsg.id
     availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateALoadBalancerInfo
-    externalSubnet: network.outputs.externalSubnet
-    internalSubnet: network.outputs.internalSubnet
+    externalSubnet: externalSubnet
+    internalSubnet: internalSubnet
   }
 }
 module fortigateB './fortigate.bicep' = {
@@ -207,8 +239,8 @@ module fortigateB './fortigate.bicep' = {
     adminNsgId: fgAdminNsg.id
     availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateBLoadBalancerInfo
-    externalSubnet: network.outputs.externalSubnet
-    internalSubnet: network.outputs.internalSubnet
+    externalSubnet: externalSubnet
+    internalSubnet: internalSubnet
   }
 }
 
