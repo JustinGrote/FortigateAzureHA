@@ -1,5 +1,4 @@
 // Mandatory Parameters
-
 param fgNamePrefix string {
   metadata: {
     description: 'Name for FortiGate virtual appliances (A & B will be appended to the end of each respectively).'
@@ -18,6 +17,12 @@ param location string {
     description: 'Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group'
   }
   default: resourceGroup().location
+}
+param publicIPID string {
+  metadata: {
+    description: 'Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one'
+  }
+  default: ''
 }
 param fortimanagerFqdn string {
   metadata: {
@@ -163,6 +168,7 @@ module loadbalancer './loadbalancer.bicep' = {
     fgbManagementSshPort: fgbManagementSshPort
     internalSubnet: network.outputs.internalSubnet
     externalSubnet: network.outputs.externalSubnet
+    publicIPID: publicIPID
   }
 }
 

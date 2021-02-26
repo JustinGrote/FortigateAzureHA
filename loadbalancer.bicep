@@ -30,17 +30,6 @@ param publicIPAddressName string {
   }
   default: lbName
 }
-//TODO: Change to bool
-param publicIpAllocationMethod string {
-  allowed: [
-    'Static'
-    'Dynamic'
-  ]
-  metadata: {
-    description: 'Dynamic public IPs change on reboot'
-  }
-  default: 'Static'
-}
 param fortimanagerFqdn string {
   metadata: {
     description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
@@ -71,9 +60,15 @@ param fgbManagementSshPort int {
   }
   default: 51022
 }
+param publicIPID string {
+  metadata: {
+    description: 'Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one'
+  }
+  default: ''
+}
 
 
-resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = {
+resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = if (empty(publicIPID)) {
   name: lbName
   location: location
   tags: {
@@ -83,13 +78,12 @@ resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = {
     name: 'Standard'
   }
   properties: {
-    publicIPAllocationMethod: publicIpAllocationMethod
+    publicIPAllocationMethod: 'Static'
     dnsSettings: {
       domainNameLabel: toLower('${lbName}-${substring(uniqueString(lbName), 0, 4)}')
     }
   }
 }
-
 
 var externalLBFEName = 'default'
 var externalLBBEName = 'default'
@@ -108,7 +102,7 @@ resource externalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
         name: externalLBFEName
         properties: {
           publicIPAddress: {
-            id: pip.id
+            id: empty(publicIPID) ? pip.id : publicIPID
           }
         }
       }
@@ -295,4 +289,4 @@ output fortigateBLoadBalancerInfo object = {
   ]
 }
 
-output publicIpFqdn string = pip.properties.dnsSettings.fqdn
+output publicIpFqdn string = empty(publicIPID) ? pip.properties.dnsSettings.fqdn : reference(publicIPID,'2020-05-01').dnsSettings.fqdn
