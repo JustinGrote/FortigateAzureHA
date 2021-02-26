@@ -1,25 +1,41 @@
-param location string {
-  metadata: {
-    description: 'Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group'
-  }
-  default: resourceGroup().location
-}
+// Mandatory Parameters
+
 param fgNamePrefix string {
   metadata: {
     description: 'Name for FortiGate virtual appliances (A & B will be appended to the end of each respectively).'
   }
-}
-param adminUsername string {
-  metadata: {
-    description: 'Username for the Fortigate virtual appliances.'
-  }
-  default: 'fgadmin'
 }
 param adminPassword string {
   metadata: {
     description: 'Password for the Fortigate virtual appliances.'
   }
   secure: true
+}
+
+// Optional Parameters
+param location string {
+  metadata: {
+    description: 'Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group'
+  }
+  default: resourceGroup().location
+}
+param fortimanagerFqdn string {
+  metadata: {
+    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
+  }
+  default: ''
+}
+param adminUsername string {
+  metadata: {
+    description: 'Username for the Fortigate virtual appliances. Defaults to fgadmin'
+  }
+  default: 'fgadmin'
+}
+param adminPublicKey string {
+  metadata: {
+    description: 'SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/'
+  }
+  default: ''
 }
 param bringYourOwnLicense bool {
   metadata: {
@@ -151,6 +167,8 @@ module loadbalancer './loadbalancer.bicep' = {
 }
 
 var fgImageSku = bringYourOwnLicense ? 'fortinet_fg-vm' : 'fortinet_fg-vm_payg_20190624'
+
+// TODO: Build both with a loop once bicep 0.4 is released
 module fortigateA './fortigate.bicep' = {
   name: '${deploymentName}-fortigateA'
   params: {
@@ -159,6 +177,7 @@ module fortigateA './fortigate.bicep' = {
     vmSize: vmSize
     adminUsername: adminUsername
     adminPassword: adminPassword
+    adminPublicKey: adminPublicKey
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: fgVersion
     adminNsgId: fgAdminNsg.id
@@ -176,6 +195,7 @@ module fortigateB './fortigate.bicep' = {
     vmSize: vmSize
     adminUsername: adminUsername
     adminPassword: adminPassword
+    adminPublicKey: adminPublicKey
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: fgVersion
     adminNsgId: fgAdminNsg.id

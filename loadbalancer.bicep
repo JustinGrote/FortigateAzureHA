@@ -41,6 +41,12 @@ param publicIpAllocationMethod string {
   }
   default: 'Static'
 }
+param fortimanagerFqdn string {
+  metadata: {
+    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
+  }
+  default: ''
+}
 param fgaManagementHttpPort int {
   metadata: {
     description: 'The port to use for accessing the http management interface of the first Fortigate'

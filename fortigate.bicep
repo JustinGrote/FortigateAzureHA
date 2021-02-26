@@ -49,6 +49,12 @@ param location string {
   }
   default: resourceGroup().location
 }
+param fortimanagerFqdn string {
+  metadata: {
+    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
+  }
+  default: ''
+}
 param adminPublicKey string {
   metadata: {
     description: 'SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/'
@@ -200,7 +206,9 @@ resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
 // }
 
 //FIXME: Needs multiline syntax from .3
-var fortigateConfig = base64('config system probe-response\n set mode http-probe\nend\nconfig system interface\n edit port1\n  set description ${externalSubnet.name}\n  append allowaccess probe-response\n next\n edit port2\n  set description ${internalSubnet.name}\n  set allowaccess ping probe-response\n next\nend\nconfig sys admin\n edit admin\n  set password ${adminPassword}\n next\nend\n${FortiGateAdditionalConfig}')
+var fortigateBaseConfig = 'config system probe-response\n set mode http-probe\nend\nconfig system interface\n edit port1\n  set description ${externalSubnet.name}\n  append allowaccess probe-response\n next\n edit port2\n  set description ${internalSubnet.name}\n  set allowaccess ping probe-response\n next\nend\nconfig sys admin\n edit admin\n  set password ${adminPassword}\n next\nend\n${FortiGateAdditionalConfig}'
+var fortigateFMConfig = empty(fortimanagerFqdn) ? '' : '\nconfig system central-management\n set type fortimanager\n set fmg ${fortimanagerFqdn}\n end' 
+var fortigateConfig = base64('${fortigateBaseConfig}${fortigateFMConfig}')
 
 var availabilitySet = {
   id: availabilitySetId
