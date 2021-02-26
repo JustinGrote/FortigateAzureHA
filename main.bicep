@@ -93,8 +93,43 @@ param fgbManagementSshPort int {
   }
   default: 51022
 }
+param externalSubnetName string {
+  metadata: {
+    description: 'Specify the ID of an existing vnet to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option'
+  }
+  default: 'External'
+}
+param internalSubnetName string {
+  metadata: {
+    description: 'Specify the name of the internal subnet. The port1 interface will be given this name'
+  }
+  default: 'Transit'
+}
 
-// Existing vNet Scenario options
+// New vNet Scenario parameters
+param vnetAddressPrefixes array {
+  metadata: {
+    description: 'vNet Address Prefixes to allocate to the vNet'
+  }
+  default: [
+    '10.0.0.0/16'
+  ]
+}
+param externalSubnetPrefix string {
+  metadata: {
+    description: 'Subnet range for the external network.'
+  }
+  default: '10.0.1.0/24'
+}
+param internalSubnetPrefix string {
+  metadata: {
+    description: 'Subnet range for the internal (transit) network. There typically will be no other devices in this subnet besides the internal load balancer, it is just used as a UDR target'
+  }
+  default: '10.0.2.0/24'
+}
+
+
+// Existing vNet Scenario parameters
 param vnetName string {
   metadata: {
     description: 'Specify the name of an existing vnet within the subscription to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option, as well as vnetResourceGroupName if the vnet is not in the same resource group as this deployment'
@@ -106,18 +141,6 @@ param vnetResourceGroupName string {
     description: 'Specify the resource group where the existing vnet resides. You must specify the internalSubnetName and externalSubnetName options if you specify this option'
   }
   default: resourceGroup().name
-}
-param internalSubnetName string {
-  metadata: {
-    description: 'Specify the name of the internal subnet. The port1 interface will be given this name'
-  }
-  default: 'Internal'
-}
-param externalSubnetName string {
-  metadata: {
-    description: 'Specify the ID of an existing vnet to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option'
-  }
-  default: 'External'
 }
 
 
@@ -183,6 +206,9 @@ module network './network.bicep' = if (empty(vnetName)) {
   name: '${deploymentName}-network'
   params: {
     vnetName: fgNamePrefix
+    vnetAddressPrefixes: vnetAddressPrefixes
+    internalSubnetPrefix: internalSubnetPrefix
+    externalSubnetPrefix: externalSubnetPrefix
     internalSubnetName: internalSubnetName
     externalSubnetName: externalSubnetName
   }
@@ -252,22 +278,5 @@ output fgaManagementUri string = '${baseUri}:${fgaManagementHttpPort}'
 output fgbManagementUri string = '${baseUri}:${fgbManagementHttpPort}'
 output fgaManagementSshCommand string = '${baseSsh} -p ${fgaManagementSshPort}' 
 output fgbManagementSshCommand string = '${baseSsh} -p ${fgbManagementSshPort}'
-// TODO: fgaManagementSSHConfig once multiline support is added
-// "fgaManagementSSHConfig": {
-//   "type": "String",
-//   "value": "[concat(
-//       'Host ', variables('compute_VM_fga_Name'), '\n',
-//       '  HostName ', reference(variables('publicIPId')).dnsSettings.fqdn, '\n',
-//       '  Port ', parameters('fgaManagementSshPort'),'\n',
-//       '  User ', parameters('adminUsername')
-//   )]"
-// },
-// "fgbManagementSSHConfig": {
-//   "type": "String",
-//   "value": "[concat(
-//       'Host ', variables('compute_VM_fgb_Name'), '\n',
-//       '  HostName ', reference(variables('publicIPId')).dnsSettings.fqdn, '\n',
-//       '  Port ', parameters('fgbManagementSshPort'),'\n',
-//       '  User ', parameters('adminUsername')
-//   )]"
-// }
+output fgaManagementSSHConfig string = '\nHost ${fortigateA.outputs.fgName}\n  HostName ${fqdn}\n  Port ${fgaManagementSshPort}\n  User ${adminUsername}'
+output fgbManagementSSHConfig string = '\nHost ${fortigateB.outputs.fgName}\n  HostName ${fqdn}\n  Port ${fgaManagementSshPort}\n  User ${adminUsername}'
