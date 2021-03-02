@@ -45,7 +45,7 @@ param location string {
 }
 param fortimanagerFqdn string {
   metadata: {
-    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
+    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup. WARNING: As of 6.2.4 you will need to set the default "admin" password to blank temporarily to be able to click Authorize in Fortimanager and have it complete the tunnel successfully'
   }
   default: ''
 }
@@ -132,12 +132,12 @@ resource nic1 'Microsoft.Network/networkInterfaces@2020-05-01' = {
   properties: {
     ipConfigurations: [
       {
-        name: internalSubnet.name
+        name: externalSubnet.name
         properties: {
-          privateIPAllocationMethod: empty(internalSubnetIP) ? 'Dynamic' : 'Static' 
-          privateIPAddress: empty(internalSubnetIP) ? json('null') : internalSubnetIP
+          privateIPAllocationMethod: empty(externalSubnetIP) ? 'Dynamic' : 'Static' 
+          privateIPAddress: empty(externalSubnetIP) ? json('null') : externalSubnetIP
           subnet: {
-            id: internalSubnet.id
+            id: externalSubnet.id
           }
           loadBalancerBackendAddressPools: [
             {
@@ -172,12 +172,12 @@ resource nic2 'Microsoft.Network/networkInterfaces@2020-05-01' = {
   properties: {
     ipConfigurations: [
       {
-        name: externalSubnet.Name
+        name: internalSubnet.Name
         properties: {
-          privateIPAllocationMethod: empty(externalSubnetIP) ? 'Dynamic' : 'Static' 
-          privateIPAddress: empty(externalSubnetIP) ? json('null') : externalSubnetIP
+          privateIPAllocationMethod: empty(internalSubnetIP) ? 'Dynamic' : 'Static' 
+          privateIPAddress: empty(internalSubnetIP) ? json('null') : internalSubnetIP
           subnet: {
-            id: externalSubnet.Id
+            id: internalSubnet.Id
           }
           loadBalancerBackendAddressPools: [
             {
@@ -193,7 +193,7 @@ resource nic2 'Microsoft.Network/networkInterfaces@2020-05-01' = {
 }
 
 resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
-  name: toLower('${vmName}')
+  name: vmDiagnosticStorageName
   location: location
   kind: 'Storage'
   sku: {
@@ -220,7 +220,23 @@ resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
 // }
 
 //FIXME: Needs multiline syntax from .3
-var fortigateBaseConfig = 'config system probe-response\n set mode http-probe\nend\nconfig system interface\n edit port1\n  set description ${externalSubnet.name}\n  append allowaccess probe-response\n next\n edit port2\n  set description ${internalSubnet.name}\n  set allowaccess ping probe-response\n next\nend\nconfig sys admin\n edit admin\n  set password ${adminPassword}\n next\nend\n${FortiGateAdditionalConfig}'
+var fortigateBaseConfigTemplate = '''
+config system probe-response
+ set mode http-probe
+end
+config system interface
+ edit port1
+  set description {0}
+  append allowaccess probe-response
+ next
+ edit port2
+  set description {1}
+  set allowaccess ping probe-response
+ next
+end
+{3}
+'''
+var fortigateBaseConfig = format(fortigateBaseConfigTemplate, externalSubnet.name, internalSubnet.name, FortiGateAdditionalConfig)
 var fortigateFMConfig = empty(fortimanagerFqdn) ? '' : '\nconfig system central-management\n set type fortimanager\n set fmg ${fortimanagerFqdn}\n end' 
 var fortigateConfig = base64('${fortigateBaseConfig}${fortigateFMConfig}')
 

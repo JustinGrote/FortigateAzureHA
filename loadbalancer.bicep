@@ -3,11 +3,6 @@ param lbName string {
     description: 'Base name prefix for the load balancers'
   }
 }
-param externalSubnet object {
-  metadata: {
-    description: 'Subnet for the external (port1) interface'
-  }
-}
 param internalSubnet object {
   metadata: {
     description: 'Subnet for the internal (port2) interface'
@@ -24,21 +19,9 @@ param location string {
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
-param publicIPAddressName string {
-  metadata: {
-    description: 'Name of Public IP address element.'
-  }
-  default: lbName
-}
 param lbInternalSubnetIP string {
   metadata: {
     description: 'The port to use for accessing the http management interface of the first Fortigate'
-  }
-  default: ''
-}
-param fortimanagerFqdn string {
-  metadata: {
-    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
   }
   default: ''
 }

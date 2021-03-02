@@ -255,7 +255,6 @@ module loadbalancer './loadbalancer.bicep' = {
     fgbManagementHttpPort: fgbManagementHttpPort
     fgbManagementSshPort: fgbManagementSshPort
     internalSubnet: internalSubnet
-    externalSubnet: externalSubnet
     publicIPID: publicIPID
     lbInternalSubnetIP: lbInternalSubnetIP
   }
@@ -263,7 +262,6 @@ module loadbalancer './loadbalancer.bicep' = {
 
 var fgImageSku = bringYourOwnLicense ? 'fortinet_fg-vm' : 'fortinet_fg-vm_payg_20190624'
 
-// TODO: Build both with a loop once bicep 0.4 is released
 module fortigateA 'fortigate.bicep' = {
   name: '${deploymentName}-fortigateA'
   params: {
@@ -275,6 +273,7 @@ module fortigateA 'fortigate.bicep' = {
     adminPublicKey: adminPublicKey
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: fgVersion
+    fortimanagerFqdn: fortimanagerFqdn
     adminNsgId: fgAdminNsg.id
     availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateALoadBalancerInfo
@@ -296,6 +295,7 @@ module fortigateB 'fortigate.bicep' = {
     adminPublicKey: adminPublicKey
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: fgVersion
+    fortimanagerFqdn: fortimanagerFqdn
     adminNsgId: fgAdminNsg.id
     availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateBLoadBalancerInfo
@@ -314,5 +314,12 @@ output fgaManagementUri string = '${baseUri}:${fgaManagementHttpPort}'
 output fgbManagementUri string = '${baseUri}:${fgbManagementHttpPort}'
 output fgaManagementSshCommand string = '${baseSsh} -p ${fgaManagementSshPort}' 
 output fgbManagementSshCommand string = '${baseSsh} -p ${fgbManagementSshPort}'
-output fgaManagementSSHConfig string = '\nHost ${fortigateA.outputs.fgName}\n  HostName ${fqdn}\n  Port ${fgaManagementSshPort}\n  User ${adminUsername}'
-output fgbManagementSSHConfig string = '\nHost ${fortigateB.outputs.fgName}\n  HostName ${fqdn}\n  Port ${fgaManagementSshPort}\n  User ${adminUsername}'
+
+var fgManagementSSHConfigTemplate = '''
+Host {0}  
+  HostName {1}
+  Port {2}
+  User {3}
+'''
+output fgaManagementSSHConfig string = format(fgManagementSSHConfigTemplate, fortigateA.outputs.fgName, fqdn, fgaManagementSshPort, adminUsername)
+output fgbManagementSSHConfig string = format(fgManagementSSHConfigTemplate, fortigateB.outputs.fgName, fqdn, fgbManagementSshPort, adminUsername)
