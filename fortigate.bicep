@@ -1,115 +1,67 @@
 // Mandatory Parameters
-param vmName string {
-  metadata: {
-    description: 'Username for the Fortigate virtual appliances.'
-  }
-}
-param adminUsername string {
-  metadata: {
-    description: 'Username for the Fortigate virtual appliances.'
-  }
-}
-param adminPassword string {
-  metadata: {
-    description: 'Password for the Fortigate virtual appliances.'
-  }
-  secure: true
-}
-param adminNsgId string {
-  metadata: {
-    description: 'Resource ID for the admin access Network Security Group'
-  }
-}
-param externalSubnet object {
-  metadata: {
-    description: 'Subnet for the external (port1) interface'
-  }
-}
-param internalSubnet object {
-  metadata: {
-    description: 'Subnet for the internal (port2) interface'
-  }
-}
-param loadBalancerInfo object {
-  metadata: {
-    description: 'Load balancer information from the fortigate loadbalancer module'
-  }
-}
+@description('Username for the Fortigate virtual appliances.')
+param vmName string 
+
+@description('Username for the Fortigate virtual appliances.')
+param adminUsername string
+
+@description('Password for the Fortigate virtual appliances.')
+@secure()
+param adminPassword string
+
+@description('Resource ID for the admin access Network Security Group')
+param adminNsgId string
+
+@description('Subnet for the external (port1) interface')
+param externalSubnet object
+
+@description('Subnet for the internal (port2) interface')
+param internalSubnet object
+
+@description('Load balancer information object from the fortigate loadbalancer module')
+param loadBalancerInfo object
 
 // Optional Parameters
-param location string {
-  metadata: {
-    description: 'Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group'
-  }
-  default: resourceGroup().location
-}
-param fortimanagerFqdn string {
-  metadata: {
-    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup. WARNING: As of 6.2.4 you will need to set the default "admin" password to blank temporarily to be able to click Authorize in Fortimanager and have it complete the tunnel successfully'
-  }
-  default: ''
-}
-param adminPublicKey string {
-  metadata: {
-    description: 'SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/'
-  }
-  default: ''
-}
-param FortigateImageSKU string {
-  allowed: [
-    'fortinet_fg-vm'
-    'fortinet_fg-vm_payg_20190624'
-  ]
-  metadata: {
-    description: 'Identifies whether to to use PAYG (on demand licensing) or BYOL license model (where license is purchased separately)'
-  }
-  default: 'fortinet_fg-vm'
-}
-param FortigateImageVersion string {
-  metadata: {
-    description: 'Select image version.'
-  }
-  default: 'latest'
-}
-param FortiGateAdditionalConfig string {
-  metadata: {
-    description: 'FortiGate CLI configuration items to add to the basic configuration. You should use the \\n character to delimit newlines, though a multiline string should generally be OK as well'
-  }
-  default: ''
-}
-param vmSize string {
-  metadata: {
-    description: 'Virtual Machine size selection'
-  }
-  default: 'Standard_DS3_v2'
-}
+@description('Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group')
+param location string = resourceGroup().location
+
+@description('Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup. WARNING: As of 6.2.4 you will need to set the default "admin" password to blank temporarily to be able to click Authorize in Fortimanager and have it complete the tunnel successfully')
+param fortimanagerFqdn string = ''
+
+@description('SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/')
+param adminPublicKey string = ''
+
+@description('Identifies whether to to use PAYG (on demand licensing) or BYOL license model (where license is purchased separately)')
+@allowed([
+  'fortinet_fg-vm'
+  'fortinet_fg-vm_payg_20190624'
+])
+param FortigateImageSKU string = 'fortinet_fg-vm'
+
+@description('Select image version.')
+param FortigateImageVersion string = 'latest'
+
+@description('FortiGate CLI configuration items to add to the basic configuration. You should use the \\n character to delimit newlines, though a multiline string should generally be OK as well')
+param FortiGateAdditionalConfig string = ''
+
+@description('Virtual Machine size selection')
+param vmSize string = 'Standard_DS3_v2'
+
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
-param vmLogDiskSizeGB int {
-  metadata: {
-    description: 'Size of the log disk for the virtual appliances. Defaults to 30GB'
-  }
-  default: 30
-}
-param externalSubnetIP string {
-  metadata: {
-    description: 'IP Address for the external (port1) interface in 1.2.3.4 format.'
-  }
-  default: ''
-}
-param internalSubnetIP string {
-  metadata: {
-    description: 'IP Address for the internal (port2) interface in 1.2.3.4 format.'
-  }
-  default: ''
-}
-param availabilitySetId string {
-  metadata: {
-    description: 'Availability Set that the fortigate should belong to'
-  }
-  default: ''
-}
+@description('Size of the log disk for the virtual appliances. Defaults to 30GB')
+param vmLogDiskSizeGB int = 30
+
+@description('IP Address for the external (port1) interface in 1.2.3.4 format.')
+param externalSubnetIP string = ''
+
+@description('IP Address for the internal (port2) interface in 1.2.3.4 format.')
+param internalSubnetIP string = ''
+
+@description('Availability Set that the fortigate should belong to')
+param availabilitySetId string = ''
+
 
 var vmDiagnosticStorageName = toLower(vmName)
 var vmPublicKeyConfiguration = {
@@ -219,7 +171,6 @@ resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
 //   }
 // }
 
-//FIXME: Needs multiline syntax from .3
 var fortigateBaseConfigTemplate = '''
 config system probe-response
  set mode http-probe

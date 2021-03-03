@@ -1,178 +1,97 @@
 // Mandatory Parameters
-param fgNamePrefix string {
-  metadata: {
-    description: 'Name for FortiGate virtual appliances (A & B will be appended to the end of each respectively).'
-  }
-}
-param adminPassword string {
-  metadata: {
-    description: 'Password for the Fortigate virtual appliances.'
-  }
-  secure: true
-}
+
+@description('Name for FortiGate virtual appliances (A & B will be appended to the end of each respectively).')
+param fgNamePrefix string = resourceGroup().name
+
+@secure()
+@description('Password for the Fortigate virtual appliances.')
+param adminPassword string
 
 // Optional Parameters
-param location string {
-  metadata: {
-    description: 'Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group'
-  }
-  default: resourceGroup().location
-}
-param publicIPID string {
-  metadata: {
-    description: 'Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one'
-  }
-  default: ''
-}
-param fortimanagerFqdn string {
-  metadata: {
-    description: 'Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup'
-  }
-  default: ''
-}
-param adminUsername string {
-  metadata: {
-    description: 'Username for the Fortigate virtual appliances. Defaults to fgadmin'
-  }
-  default: 'fgadmin'
-}
-param adminPublicKey string {
-  metadata: {
-    description: 'SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/'
-  }
-  default: ''
-}
-param bringYourOwnLicense bool {
-  metadata: {
-    description: 'Specify true for a Bring Your Own License (BYOL) deployment, otherwise the fortigate license will be included in the VM subscription cost'
-  }
-  default: false
-}
-param useSpotInstances bool {
-  metadata: {
-    description: 'Use spot instances to save cost at the expense of potential reduced availability. Availability set will be disabled with this option'
-  }
-  default: false
-}
-param fgVersion string {
-  metadata: {
-    description: 'Specify the version to use e.g. 6.4.2. Defaults to latest version'
-  }
-  default: 'latest'
-}
-param vmSize string {
-  metadata: {
-    description: 'Specify an alternate VM size. The VM size must allow for at least two NICs, and four are recommended'
-  }
-  default: 'Standard_DS3_v2'
-}
+@description('Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group')
+param location string = resourceGroup().location
+
+@description('Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one')
+param publicIPID string = ''
+
+@description('Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup')
+param fortimanagerFqdn string = ''
+
+@description('Username for the Fortigate virtual appliances. Defaults to fgadmin')
+param adminUsername string = 'fgadmin'
+
+@description('SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/')
+param adminPublicKey string = ''
+
+@description('Specify true for a Bring Your Own License (BYOL) deployment, otherwise the fortigate license will be included in the VM subscription cost')
+param bringYourOwnLicense bool = false
+
+@description('Use spot instances to save cost at the expense of potential reduced availability. Availability set will be disabled with this option')
+param useSpotInstances bool = false
+
+@description('Specify the version to use e.g. 6.4.2. Defaults to latest version')
+param fgVersion string = 'latest'
+
+@description('Specify an alternate VM size. The VM size must allow for at least two NICs, and four are recommended')
+param vmSize string = 'Standard_DS3_v2'
+
+@description('IP address of the internal load balancer port. This normally does not need to be configured but it is where all traffic flows to via the route table rule')
+param lbInternalSubnetIP string = ''
+
+@description('The port to use for accessing the http management interface of the first Fortigate')
+param fgaManagementHttpPort int = 50443
+
+@description('The port to use for accessing the http management interface of the second Fortigate')
+param fgbManagementHttpPort int = 51443
+
+@description('The port to use for accessing the ssh management interface of the first Fortigate')
+param fgaManagementSshPort int = 50022
+
+@description('The port to use for accessing the ssh management interface of the first Fortigate')
+param fgbManagementSshPort int = 51022
+
+@description('IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters')
+param fgaExternalSubnetIP string = ''
+
+@description('IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters')
+param fgaInternalSubnetIP string = ''
+
+@description('IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters')
+param fgbExternalSubnetIP string = ''
+
+@description('IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters')
+param fgbInternalSubnetIP string = ''
+
+@description('Specify the ID of an existing vnet to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option')
+param externalSubnetName string = 'External'
+
+@description('Specify the name of the internal subnet. The port1 interface will be given this name')
+param internalSubnetName string = 'Transit'
+
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
-param lbInternalSubnetIP string {
-  metadata: {
-    description: 'IP address of the internal load balancer port. This normally does not need to be configured but it is where all traffic flows to via the route table rule'
-  }
-  default: ''
-}
-param fgaManagementHttpPort int {
-  metadata: {
-    description: 'The port to use for accessing the http management interface of the first Fortigate'
-  }
-  default: 50443
-}
-param fgbManagementHttpPort int {
-  metadata: {
-    description: 'The port to use for accessing the http management interface of the second Fortigate'
-  }
-  default: 51443
-}
-param fgaManagementSshPort int {
-  metadata: {
-    description: 'The port to use for accessing the ssh management interface of the first Fortigate'
-  }
-  default: 50022
-}
-param fgbManagementSshPort int {
-  metadata: {
-    description: 'The port to use for accessing the ssh management interface of the first Fortigate'
-  }
-  default: 51022
-}
-param fgaExternalSubnetIP string {
-  metadata: {
-    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
-  }
-  default: ''
-}
-param fgaInternalSubnetIP string {
-  metadata: {
-    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
-  }
-  default: ''
-}
-param fgbExternalSubnetIP string {
-  metadata: {
-    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
-  }
-  default: ''
-}
-param fgbInternalSubnetIP string {
-  metadata: {
-    description: 'IP Address for the external (port1) interface in 1.2.3.4 format. This should normally not be set as only the LB addresses matters'
-  }
-  default: ''
-}
-param externalSubnetName string {
-  metadata: {
-    description: 'Specify the ID of an existing vnet to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option'
-  }
-  default: 'External'
-}
-param internalSubnetName string {
-  metadata: {
-    description: 'Specify the name of the internal subnet. The port1 interface will be given this name'
-  }
-  default: 'Transit'
-}
+
+
 
 // New vNet Scenario parameters
-param vnetAddressPrefixes array {
-  metadata: {
-    description: 'vNet Address Prefixes to allocate to the vNet'
-  }
-  default: [
-    '10.0.0.0/16'
-  ]
-}
-param externalSubnetPrefix string {
-  metadata: {
-    description: 'Subnet range for the external network.'
-  }
-  default: '10.0.1.0/24'
-}
-param internalSubnetPrefix string {
-  metadata: {
-    description: 'Subnet range for the internal (transit) network. There typically will be no other devices in this subnet besides the internal load balancer, it is just used as a UDR target'
-  }
-  default: '10.0.2.0/24'
-}
+@description('vNet Address Prefixes to allocate to the vNet')
+param vnetAddressPrefixes array = [
+  '10.0.0.0/16'
+]
 
+@description('Subnet range for the external network.')
+param externalSubnetPrefix string = '10.0.1.0/24'
+
+@description('Subnet range for the internal (transit) network. There typically will be no other devices in this subnet besides the internal load balancer, it is just used as a UDR target')
+param internalSubnetPrefix string = '10.0.2.0/24'
 
 // Existing vNet Scenario parameters
-param vnetName string {
-  metadata: {
-    description: 'Specify the name of an existing vnet within the subscription to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option, as well as vnetResourceGroupName if the vnet is not in the same resource group as this deployment'
-  }
-  default: ''
-}
-param vnetResourceGroupName string {
-  metadata: {
-    description: 'Specify the resource group where the existing vnet resides. You must specify the internalSubnetName and externalSubnetName options if you specify this option'
-  }
-  default: resourceGroup().name
-}
+@description('Specify the name of an existing vnet within the subscription to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option, as well as vnetResourceGroupName if the vnet is not in the same resource group as this deployment')
+param vnetName string = ''
 
+@description('Specify the resource group where the existing vnet resides. You must specify the internalSubnetName and externalSubnetName options if you specify this option')
+param vnetResourceGroupName string = resourceGroup().name
 
 
 var deploymentName = deployment().name

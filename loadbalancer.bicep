@@ -1,61 +1,34 @@
-param lbName string {
-  metadata: {
-    description: 'Base name prefix for the load balancers'
-  }
-}
-param internalSubnet object {
-  metadata: {
-    description: 'Subnet for the internal (port2) interface'
-  }
-}
-param location string {
-  metadata: {
-    description: 'Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group'
-  }
-  default: resourceGroup().location
-}
+@description('Subnet for the internal (port2) interface')
+param internalSubnet object
 
 // Optional
+@description('Base name prefix for the load balancers')
+param lbName string = resourceGroup().name
+
+@description('Deployment location')
+param location string = resourceGroup().location
+
+@description('The IP address that the load balancer should request on the internal subnet. This address will be used for User Defined Routes. It does not explicitly need to be specified unless you are replacing an existing installation.')
+param lbInternalSubnetIP string = ''
+
+@description('The port to use for accessing the http management interface of the first Fortigate')
+param fgaManagementHttpPort int = 50443
+
+@description('The port to use for accessing the http management interface of the second Fortigate')
+param fgbManagementHttpPort int = 51443
+
+@description('The port to use for accessing the ssh management interface of the first Fortigate')
+param fgaManagementSshPort int = 50022
+
+@description('The port to use for accessing the ssh management interface of the second Fortigate')
+param fgbManagementSshPort int = 51022
+
+@description('Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one')
+param publicIPID string = ''
+
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
-param lbInternalSubnetIP string {
-  metadata: {
-    description: 'The port to use for accessing the http management interface of the first Fortigate'
-  }
-  default: ''
-}
-param fgaManagementHttpPort int {
-  metadata: {
-    description: 'The port to use for accessing the http management interface of the first Fortigate'
-  }
-  default: 50443
-}
-param fgbManagementHttpPort int {
-  metadata: {
-    description: 'The port to use for accessing the http management interface of the second Fortigate'
-  }
-  default: 51443
-}
-param fgaManagementSshPort int {
-  metadata: {
-    description: 'The port to use for accessing the ssh management interface of the first Fortigate'
-  }
-  default: 50022
-}
-param fgbManagementSshPort int {
-  metadata: {
-    description: 'The port to use for accessing the ssh management interface of the first Fortigate'
-  }
-  default: 51022
-}
-param publicIPID string {
-  metadata: {
-    description: 'Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one'
-  }
-  default: ''
-}
-
 
 resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = if (empty(publicIPID)) {
   name: lbName
@@ -232,7 +205,6 @@ resource internalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
     ]
   }
 }
-
 
 resource routeTable2Name 'Microsoft.Network/routeTables@2020-05-01' = {
   name: lbName
