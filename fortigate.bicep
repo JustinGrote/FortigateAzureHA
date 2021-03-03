@@ -185,7 +185,7 @@ config system interface
   set allowaccess ping probe-response
  next
 end
-{3}
+{2}
 '''
 var fortigateBaseConfig = format(fortigateBaseConfigTemplate, externalSubnet.name, internalSubnet.name, FortiGateAdditionalConfig)
 var fortigateFMConfig = empty(fortimanagerFqdn) ? '' : '\nconfig system central-management\n set type fortimanager\n set fmg ${fortimanagerFqdn}\n end' 
