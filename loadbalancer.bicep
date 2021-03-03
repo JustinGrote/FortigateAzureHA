@@ -1,5 +1,5 @@
-@description('Subnet for the internal (port2) interface')
-param internalSubnet object
+@description('SubnetId for the internal (port2) interface')
+param internalSubnetId string
 
 // Optional
 @description('Base name prefix for the load balancers')
@@ -161,7 +161,7 @@ resource internalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
           privateIPAllocationMethod: empty(lbInternalSubnetIP) ? 'Dynamic' : 'Static'
           privateIPAddress: empty(lbInternalSubnetIP) ? json('null') : lbInternalSubnetIP
           subnet: {
-            id: internalSubnet.id
+            id: internalSubnetId
           }
         }
       }

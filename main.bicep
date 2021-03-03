@@ -88,11 +88,7 @@ param internalSubnetPrefix string = '10.0.2.0/24'
 
 // Existing vNet Scenario parameters
 @description('Specify the name of an existing vnet within the subscription to use. You must specify the internalSubnetName and externalSubnetName options if you specify this option, as well as vnetResourceGroupName if the vnet is not in the same resource group as this deployment')
-param vnetName string = ''
-
-@description('Specify the resource group where the existing vnet resides. You must specify the internalSubnetName and externalSubnetName options if you specify this option')
-param vnetResourceGroupName string = resourceGroup().name
-
+param ExistingVNetId string = ''
 
 var deploymentName = deployment().name
 
@@ -151,7 +147,7 @@ resource fgSet 'Microsoft.Compute/availabilitySets@2019-07-01' = if (!useSpotIns
   }
 }
 
-module network 'network.bicep' = if (empty(vnetName)) {
+module network 'network.bicep' = if (empty(ExistingVNetId)) {
   name: '${deploymentName}-network'
   params: {
     vnetName: fgNamePrefix
@@ -163,8 +159,19 @@ module network 'network.bicep' = if (empty(vnetName)) {
   }
 }
 
-var internalSubnet = empty(network.outputs.internalSubnet) ? reference(resourceId(vnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', vnetName, internalSubnetName),'2020-07-01') : network.outputs.internalSubnet 
-var externalSubnet = empty(network.outputs.externalSubnet) ? reference(resourceId(vnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', vnetName, externalSubnetName),'2020-07-01') : network.outputs.externalSubnet
+
+//FIXME: Bicep 0.4 should have external references to use instead of this
+var internalSubnetInfo = {
+  id: empty(ExistingVNetId) ? network.outputs.internalSubnet.id : '${ExistingVNetId}/subnets/${internalSubnetName}'
+  name: !empty(network.outputs.internalSubnet.name) ? network.outputs.internalSubnet.name : internalSubnetName
+}
+var externalSubnetInfo = {
+  id: empty(ExistingVNetId) ? network.outputs.externalSubnet.id : '${ExistingVNetId}/subnets/${externalSubnetName}'
+  name: !empty(network.outputs.externalSubnet.name) ? network.outputs.externalSubnet.name : externalSubnetName
+}
+
+var externalSubnetId = empty(ExistingVNetId) ? network.outputs.externalSubnet.id : '${ExistingVNetId}/subnets/${externalSubnetName}'
+
 module loadbalancer './loadbalancer.bicep' = {
   name: '${deploymentName}-loadbalancer'
   params: {
@@ -173,7 +180,7 @@ module loadbalancer './loadbalancer.bicep' = {
     fgaManagementSshPort: fgaManagementSshPort
     fgbManagementHttpPort: fgbManagementHttpPort
     fgbManagementSshPort: fgbManagementSshPort
-    internalSubnet: internalSubnet
+    internalSubnetId: internalSubnetInfo.id
     publicIPID: publicIPID
     lbInternalSubnetIP: lbInternalSubnetIP
   }
@@ -196,8 +203,8 @@ module fortigateA 'fortigate.bicep' = {
     adminNsgId: fgAdminNsg.id
     availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateALoadBalancerInfo
-    externalSubnet: externalSubnet
-    internalSubnet: internalSubnet
+    externalSubnet: externalSubnetInfo
+    internalSubnet: internalSubnetInfo
     externalSubnetIP: !empty(fgaExternalSubnetIP) ? fgaExternalSubnetIP : ''
     internalSubnetIP: !empty(fgaInternalSubnetIP) ? fgaInternalSubnetIP : ''
   }
@@ -218,8 +225,8 @@ module fortigateB 'fortigate.bicep' = {
     adminNsgId: fgAdminNsg.id
     availabilitySetId: empty(fgSet.id) ? fgSet.id : ''
     loadBalancerInfo: loadbalancer.outputs.fortigateBLoadBalancerInfo
-    externalSubnet: externalSubnet
-    internalSubnet: internalSubnet
+    externalSubnet: externalSubnetInfo
+    internalSubnet: internalSubnetInfo
     externalSubnetIP: !empty(fgbExternalSubnetIP) ? fgbExternalSubnetIP : ''
     internalSubnetIP: !empty(fgbInternalSubnetIP) ? fgbInternalSubnetIP : ''
   }
@@ -235,6 +242,7 @@ output fgaManagementSshCommand string = '${baseSsh} -p ${fgaManagementSshPort}'
 output fgbManagementSshCommand string = '${baseSsh} -p ${fgbManagementSshPort}'
 
 var fgManagementSSHConfigTemplate = '''
+
 Host {0}  
   HostName {1}
   Port {2}

@@ -18,7 +18,6 @@ param internalSubnetName string = 'Transit'
 @description('Subnet 2 Prefix')
 param internalSubnetPrefix string = '10.0.2.0/24'
 
-
 resource vnet 'Microsoft.Network/virtualNetworks@2020-05-01' = {
   name: vnetName
   location: location
