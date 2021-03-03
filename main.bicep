@@ -1,3 +1,4 @@
+targetScope = 'resourceGroup' 
 // Mandatory Parameters
 
 @description('Name for FortiGate virtual appliances (A & B will be appended to the end of each respectively).')
