@@ -1,37 +1,22 @@
-param vnetName string
+param vnetName string = resourceGroup().name
 param location string = resourceGroup().location
-param vnetAddressPrefixes array {
-  metadata: {
-    description: 'Virtual Network Address prefix'
-  }
-  default: [
-    '10.0.0.0/16'
-  ]
-}
-param externalSubnetName string {
-  metadata: {
-    description: 'Subnet 1 Name'
-  }
-  default: 'External'
-}
-param externalSubnetPrefix string {
-  metadata: {
-    description: 'Subnet 1 Prefix'
-  }
-  default: '10.0.1.0/24'
-}
-param internalSubnetName string {
-  metadata: {
-    description: 'Subnet 2 Name'
-  }
-  default: 'Transit'
-}
-param internalSubnetPrefix string {
-  metadata: {
-    description: 'Subnet 2 Prefix'
-  }
-  default: '10.0.2.0/24'
-}
+
+@description('Virtual Network Address prefix')
+param vnetAddressPrefixes array = [
+  '10.0.0.0/16'
+]
+
+@description('Subnet 1 Name')
+param externalSubnetName string = 'External'
+
+@description('Subnet 1 Prefix')
+param externalSubnetPrefix string = '10.0.1.0/24'
+
+@description('Subnet 2 Name')
+param internalSubnetName string = 'Transit'
+
+@description('Subnet 2 Prefix')
+param internalSubnetPrefix string = '10.0.2.0/24'
 
 resource vnet 'Microsoft.Network/virtualNetworks@2020-05-01' = {
   name: vnetName
