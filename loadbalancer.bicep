@@ -1,38 +1,38 @@
 @description('SubnetId for the internal (port2) interface')
-param internalSubnetId string
+param InternalSubnetId string
 
 // Optional
 @description('Base name prefix for the load balancers')
-param lbName string = resourceGroup().name
+param LbName string = resourceGroup().name
 
 @description('Deployment location')
-param location string = resourceGroup().location
+param Location string = resourceGroup().location
 
 @description('The IP address that the load balancer should request on the internal subnet. This address will be used for User Defined Routes. It does not explicitly need to be specified unless you are replacing an existing installation.')
-param lbInternalSubnetIP string = ''
+param LbInternalSubnetIP string = ''
 
 @description('The port to use for accessing the http management interface of the first Fortigate')
-param fgaManagementHttpPort int = 50443
+param FgaManagementHttpPort int = 50443
 
 @description('The port to use for accessing the http management interface of the second Fortigate')
-param fgbManagementHttpPort int = 51443
+param FgbManagementHttpPort int = 51443
 
 @description('The port to use for accessing the ssh management interface of the first Fortigate')
-param fgaManagementSshPort int = 50022
+param FgaManagementSshPort int = 50022
 
 @description('The port to use for accessing the ssh management interface of the second Fortigate')
-param fgbManagementSshPort int = 51022
+param FgbManagementSshPort int = 51022
 
 @description('Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one')
-param publicIPID string = ''
+param PublicIPID string = ''
 
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
 
-resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = if (empty(publicIPID)) {
-  name: lbName
-  location: location
+resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = if (empty(PublicIPID)) {
+  name: LbName
+  location: Location
   tags: {
     provider: toUpper(FortinetTags.provider)
   }
@@ -42,7 +42,7 @@ resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = if (empty(public
   properties: {
     publicIPAllocationMethod: 'Static'
     dnsSettings: {
-      domainNameLabel: toLower('${lbName}-${substring(uniqueString(lbName), 0, 4)}')
+      domainNameLabel: toLower('${LbName}-${substring(uniqueString(LbName), 0, 4)}')
     }
   }
 }
@@ -50,8 +50,8 @@ resource pip 'Microsoft.Network/publicIPAddresses@2020-05-01' = if (empty(public
 var externalLBFEName = 'default'
 var externalLBBEName = 'default'
 resource externalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
-  name: lbName
-  location: location
+  name: LbName
+  location: Location
   tags: {
     provider: toUpper(FortinetTags.provider)
   }
@@ -64,7 +64,7 @@ resource externalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
         name: externalLBFEName
         properties: {
           publicIPAddress: {
-            id: empty(publicIPID) ? pip.id : publicIPID
+            id: empty(PublicIPID) ? pip.id : PublicIPID
           }
         }
       }
@@ -77,49 +77,49 @@ resource externalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
     loadBalancingRules: []
     inboundNatRules: [
       {
-        name: '${lbName}A-Management-SSH'
+        name: '${LbName}A-Management-SSH'
         properties: {
           frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, externalLBFEName)
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', LbName, externalLBFEName)
           }
           protocol: 'Tcp'
-          frontendPort: fgaManagementSshPort
+          frontendPort: FgaManagementSshPort
           backendPort: 22
           enableFloatingIP: false
         }
       }
       {
-        name: '${lbName}A-Management-HTTPS'
+        name: '${LbName}A-Management-HTTPS'
         properties: {
           frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, externalLBFEName)
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', LbName, externalLBFEName)
           }
           protocol: 'Tcp'
-          frontendPort: fgaManagementHttpPort
+          frontendPort: FgaManagementHttpPort
           backendPort: 443
           enableFloatingIP: false
         }
       }
       {
-        name: '${lbName}B-Management-SSH'
+        name: '${LbName}B-Management-SSH'
         properties: {
           frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, externalLBFEName)
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', LbName, externalLBFEName)
           }
           protocol: 'Tcp'
-          frontendPort: fgbManagementSshPort
+          frontendPort: FgbManagementSshPort
           backendPort: 22
           enableFloatingIP: false
         }
       }
       {
-        name: '${lbName}B-Management-HTTPS'
+        name: '${LbName}B-Management-HTTPS'
         properties: {
           frontendIPConfiguration: {
-            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, externalLBFEName)
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', LbName, externalLBFEName)
           }
           protocol: 'Tcp'
-          frontendPort: fgbManagementHttpPort
+          frontendPort: FgbManagementHttpPort
           backendPort: 443
           enableFloatingIP: false
         }
@@ -139,14 +139,14 @@ resource externalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
   }
 }
 
-var internalLBName = '${lbName}Internal'
+var internalLBName = '${LbName}Internal'
 var internalLBFEName = 'default'
 var internalLBBEName = 'default'
 var lbProbeName = 'default'
 var lbRuleName = 'default'
 resource internalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
   name: internalLBName
-  location: location
+  location: Location
   tags: {
     provider: toUpper(FortinetTags.provider)
   }
@@ -158,10 +158,10 @@ resource internalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
       {
         name: internalLBFEName
         properties: {
-          privateIPAllocationMethod: empty(lbInternalSubnetIP) ? 'Dynamic' : 'Static'
-          privateIPAddress: empty(lbInternalSubnetIP) ? json('null') : lbInternalSubnetIP
+          privateIPAllocationMethod: empty(LbInternalSubnetIP) ? 'Dynamic' : 'Static'
+          privateIPAddress: empty(LbInternalSubnetIP) ? json('null') : LbInternalSubnetIP
           subnet: {
-            id: internalSubnetId
+            id: InternalSubnetId
           }
         }
       }
@@ -207,8 +207,8 @@ resource internalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
 }
 
 resource routeTable2Name 'Microsoft.Network/routeTables@2020-05-01' = {
-  name: lbName
-  location: location
+  name: LbName
+  location: Location
   tags: {
     provider: toUpper(FortinetTags.provider)
   }
@@ -251,4 +251,4 @@ output fortigateBLoadBalancerInfo object = {
   ]
 }
 
-output publicIpFqdn string = empty(publicIPID) ? pip.properties.dnsSettings.fqdn : reference(publicIPID,'2020-05-01').dnsSettings.fqdn
+output publicIpFqdn string = empty(PublicIPID) ? pip.properties.dnsSettings.fqdn : reference(PublicIPID,'2020-05-01').dnsSettings.fqdn

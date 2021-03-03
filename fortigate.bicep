@@ -1,35 +1,35 @@
 // Mandatory Parameters
 @description('Username for the Fortigate virtual appliances.')
-param vmName string 
+param VmName string 
 
 @description('Username for the Fortigate virtual appliances.')
-param adminUsername string
+param AdminUsername string
 
 @description('Password for the Fortigate virtual appliances.')
 @secure()
-param adminPassword string
+param AdminPassword string
 
 @description('Resource ID for the admin access Network Security Group')
-param adminNsgId string
+param AdminNsgId string
 
 @description('Subnet for the external (port1) interface')
-param externalSubnet object
+param ExternalSubnet object
 
 @description('Subnet for the internal (port2) interface')
-param internalSubnet object
+param InternalSubnet object
 
 @description('Load balancer information object from the fortigate loadbalancer module')
-param loadBalancerInfo object
+param LoadBalancerInfo object
 
 // Optional Parameters
 @description('Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group')
-param location string = resourceGroup().location
+param Location string = resourceGroup().location
 
 @description('Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup. WARNING: As of 6.2.4 you will need to set the default "admin" password to blank temporarily to be able to click Authorize in Fortimanager and have it complete the tunnel successfully')
-param fortimanagerFqdn string = ''
+param FortimanagerFqdn string = ''
 
 @description('SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/')
-param adminPublicKey string = ''
+param AdminPublicKey string = ''
 
 @description('Identifies whether to to use PAYG (on demand licensing) or BYOL license model (where license is purchased separately)')
 @allowed([
@@ -45,63 +45,62 @@ param FortigateImageVersion string = 'latest'
 param FortiGateAdditionalConfig string = ''
 
 @description('Virtual Machine size selection')
-param vmSize string = 'Standard_DS3_v2'
+param VmSize string = 'Standard_DS3_v2'
 
 param FortinetTags object = {
   provider: '6EB3B02F-50E5-4A3E-8CB8-2E129258317D'
 }
 @description('Size of the log disk for the virtual appliances. Defaults to 30GB')
-param vmLogDiskSizeGB int = 30
+param VmLogDiskSizeGB int = 30
 
 @description('IP Address for the external (port1) interface in 1.2.3.4 format.')
-param externalSubnetIP string = ''
+param ExternalSubnetIP string = ''
 
 @description('IP Address for the internal (port2) interface in 1.2.3.4 format.')
-param internalSubnetIP string = ''
+param InternalSubnetIP string = ''
 
 @description('Availability Set that the fortigate should belong to')
-param availabilitySetId string = ''
+param AvailabilitySetId string = ''
 
-
-var vmDiagnosticStorageName = toLower(vmName)
+var vmDiagnosticStorageName = toLower(VmName)
 var vmPublicKeyConfiguration = {
   ssh: {
     publicKeys: [
       {
-        path: '/home/${adminUsername}/.ssh/authorized_keys'
-        keyData: adminPublicKey
+        path: '/home/${AdminUsername}/.ssh/authorized_keys'
+        keyData: AdminPublicKey
       }
     ]
   }
 }
 
 resource nic1 'Microsoft.Network/networkInterfaces@2020-05-01' = {
-  name: '${vmName}-port1'
-  location: location
+  name: '${VmName}-port1'
+  location: Location
   tags: {
     provider: toUpper(FortinetTags.provider)
   }
   properties: {
     ipConfigurations: [
       {
-        name: externalSubnet.name
+        name: ExternalSubnet.name
         properties: {
-          privateIPAllocationMethod: empty(externalSubnetIP) ? 'Dynamic' : 'Static' 
-          privateIPAddress: empty(externalSubnetIP) ? json('null') : externalSubnetIP
+          privateIPAllocationMethod: empty(ExternalSubnetIP) ? 'Dynamic' : 'Static' 
+          privateIPAddress: empty(ExternalSubnetIP) ? json('null') : ExternalSubnetIP
           subnet: {
-            id: externalSubnet.id
+            id: ExternalSubnet.id
           }
           loadBalancerBackendAddressPools: [
             {
-              id: loadBalancerInfo.externalBackendId
+              id: LoadBalancerInfo.externalBackendId
             }
           ]
           loadBalancerInboundNatRules: [
             {
-              id: loadBalancerInfo.natrules[0].id
+              id: LoadBalancerInfo.natrules[0].id
             }
             {
-              id: loadBalancerInfo.natrules[1].id
+              id: LoadBalancerInfo.natrules[1].id
             }
           ]
         }
@@ -110,30 +109,30 @@ resource nic1 'Microsoft.Network/networkInterfaces@2020-05-01' = {
     enableIPForwarding: true
     enableAcceleratedNetworking: true
     networkSecurityGroup: {
-      id: adminNsgId
+      id: AdminNsgId
     }
   }
 }
 
 resource nic2 'Microsoft.Network/networkInterfaces@2020-05-01' = {
-  name: '${vmName}-port2'
-  location: location
+  name: '${VmName}-port2'
+  location: Location
   tags: {
     provider: toUpper(FortinetTags.provider)
   }
   properties: {
     ipConfigurations: [
       {
-        name: internalSubnet.Name
+        name: InternalSubnet.Name
         properties: {
-          privateIPAllocationMethod: empty(internalSubnetIP) ? 'Dynamic' : 'Static' 
-          privateIPAddress: empty(internalSubnetIP) ? json('null') : internalSubnetIP
+          privateIPAllocationMethod: empty(InternalSubnetIP) ? 'Dynamic' : 'Static' 
+          privateIPAddress: empty(InternalSubnetIP) ? json('null') : InternalSubnetIP
           subnet: {
-            id: internalSubnet.Id
+            id: InternalSubnet.Id
           }
           loadBalancerBackendAddressPools: [
             {
-              id: loadBalancerInfo.internalBackendId
+              id: LoadBalancerInfo.internalBackendId
             }
           ]
         }
@@ -146,7 +145,7 @@ resource nic2 'Microsoft.Network/networkInterfaces@2020-05-01' = {
 
 resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: vmDiagnosticStorageName
-  location: location
+  location: Location
   kind: 'Storage'
   sku: {
     name: 'Standard_LRS'
@@ -187,16 +186,16 @@ config system interface
 end
 {2}
 '''
-var fortigateBaseConfig = format(fortigateBaseConfigTemplate, externalSubnet.name, internalSubnet.name, FortiGateAdditionalConfig)
-var fortigateFMConfig = empty(fortimanagerFqdn) ? '' : '\nconfig system central-management\n set type fortimanager\n set fmg ${fortimanagerFqdn}\n end' 
+var fortigateBaseConfig = format(fortigateBaseConfigTemplate, ExternalSubnet.name, InternalSubnet.name, FortiGateAdditionalConfig)
+var fortigateFMConfig = empty(FortimanagerFqdn) ? '' : '\nconfig system central-management\n set type fortimanager\n set fmg ${FortimanagerFqdn}\n end' 
 var fortigateConfig = base64('${fortigateBaseConfig}${fortigateFMConfig}')
 
 var availabilitySet = {
-  id: availabilitySetId
+  id: AvailabilitySetId
 }
 resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
-  name: vmName
-  location: location
+  name: VmName
+  location: Location
   tags: {
     provider: toUpper(FortinetTags.provider)
   }
@@ -207,20 +206,20 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
   }
   properties: {
     hardwareProfile: {
-      vmSize: vmSize
+      vmSize: VmSize
     }
     //Spot instance settings
-    priority: empty(availabilitySetId) ? 'Spot' : 'Regular' 
-    evictionPolicy: empty(availabilitySetId) ? 'Deallocate' : json('null')
+    priority: empty(AvailabilitySetId) ? 'Spot' : 'Regular' 
+    evictionPolicy: empty(AvailabilitySetId) ? 'Deallocate' : json('null')
     billingProfile: {
-      maxPrice: empty(availabilitySetId) ? -1 : json('null')
+      maxPrice: empty(AvailabilitySetId) ? -1 : json('null')
     }
-    availabilitySet: empty(availabilitySetId) ? json('null') : availabilitySet
+    availabilitySet: empty(AvailabilitySetId) ? json('null') : availabilitySet
     osProfile: {
-      computerName: vmName
-      adminUsername: adminUsername
-      adminPassword: adminPassword
-      linuxConfiguration: empty(adminPublicKey) ? json('null') : vmPublicKeyConfiguration
+      computerName: VmName
+      adminUsername: AdminUsername
+      adminPassword: AdminPassword
+      linuxConfiguration: empty(AdminPublicKey) ? json('null') : vmPublicKeyConfiguration
       customData: fortigateConfig
     }
     storageProfile: {
@@ -231,13 +230,13 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
         version: FortigateImageVersion
       }
       osDisk: {
-        name: vmName
+        name: VmName
         createOption: 'FromImage'
       }
       dataDisks: [
         {
-          name: '${vmName}-data'
-          diskSizeGB: vmLogDiskSizeGB
+          name: '${VmName}-data'
+          diskSizeGB: VmLogDiskSizeGB
           lun: 0
           createOption: 'Empty'
         }
@@ -268,4 +267,4 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
   }
 }
 
-output fgName string = vmName
+output fgName string = VmName
