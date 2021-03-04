@@ -1,24 +1,27 @@
 targetScope = 'resourceGroup' 
 // Mandatory Parameters
-
-@description('Name for FortiGate virtual appliances (A & B will be appended to the end of each respectively).')
-param FgNamePrefix string = resourceGroup().name
-
 @secure()
-@description('Password for the Fortigate virtual appliances.')
+@description('Password for the user defined by AdminUsername')
 param AdminPassword string
 
 // Optional Parameters
-@description('Which Azure Location (Region) to deploy to. Defaults to the same region as the resource group')
+@description('Name for FortiGate virtual appliances (A & B will be appended to the end of each respectively). Defaults to the same name as the resource group.')
+param FgNamePrefix string = resourceGroup().name
+
+@description('Which Azure Location (Region) to deploy to. Defaults to the same location as the resource group')
 param Location string = resourceGroup().location
 
 @description('Resource ID of the Public IP to use for the outbound traffic and inbound management. A standard static SKU Public IP is required. Default is to generate a new one')
 param PublicIPID string = ''
 
-@description('Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup')
+@description('Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortimanager upon startup')
 param FortimanagerFqdn string = ''
 
-@description('Username for the Fortigate virtual appliances. Defaults to fgadmin')
+@secure()
+@description('Password to use for Fortimanager connectivity, similar to a pre-shared key. Once the appliance registers with the fortimanager you will need to run "exec dev replace pw <Hostname> <ThisPassword>" at the fortimanager command line for each fortigate before clicking "Authorize". This will default to a random string that will show in the outputs upon deployment')
+param FortimanagerPassword string = ''
+
+@description('Username for the Fortigate virtual appliances. Defaults to fgadmin. NOTE: This must be something other than "admin" or the process will fail because admin is used exclusively for fortimanager communication')
 param AdminUsername string = 'fgadmin'
 
 @description('Id of an SSH public key resource stored in Azure to be used for SSH login to the user defined by AdminUsername. The public key is not sensitive information.')
@@ -190,8 +193,14 @@ var fgImageSku = BringYourOwnLicense ? 'fortinet_fg-vm' : 'fortinet_fg-vm_payg_2
 module fortigateA 'fortigate.bicep' = {
   name: '${deploymentName}-fortigateA'
   params: {
-    Location: Location
+    //Fortigate Instance-Specific Parameters
     VmName: '${FgNamePrefix}A'
+    LoadBalancerInfo: loadbalancer.outputs.fortigateALoadBalancerInfo
+    ExternalSubnetIP: !empty(FgaExternalSubnetIP) ? FgaExternalSubnetIP : ''
+    InternalSubnetIP: !empty(FgaInternalSubnetIP) ? FgaInternalSubnetIP : ''
+
+    //Fortigate Common Parameters
+    Location: Location
     VmSize: VmSize
     AdminUsername: AdminUsername
     AdminPassword: AdminPassword
@@ -199,21 +208,25 @@ module fortigateA 'fortigate.bicep' = {
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: FgVersion
     FortimanagerFqdn: FortimanagerFqdn
+    FortimanagerPassword: FortimanagerPassword
     AdminNsgId: fgAdminNsg.id
     AvailabilitySetId: empty(fgSet.id) ? fgSet.id : ''
-    LoadBalancerInfo: loadbalancer.outputs.fortigateALoadBalancerInfo
     ExternalSubnet: externalSubnetInfo
     InternalSubnet: internalSubnetInfo
-    ExternalSubnetIP: !empty(FgaExternalSubnetIP) ? FgaExternalSubnetIP : ''
-    InternalSubnetIP: !empty(FgaInternalSubnetIP) ? FgaInternalSubnetIP : ''
   }
 }
 
 module fortigateB 'fortigate.bicep' = {
   name: '${deploymentName}-fortigateB'
   params: {
-    Location: Location
+    //Fortigate Instance-Specific Parameters
     VmName: '${FgNamePrefix}B'
+    LoadBalancerInfo: loadbalancer.outputs.fortigateBLoadBalancerInfo
+    ExternalSubnetIP: !empty(FgbExternalSubnetIP) ? FgbExternalSubnetIP : ''
+    InternalSubnetIP: !empty(FgbInternalSubnetIP) ? FgbInternalSubnetIP : ''
+
+    //Fortigate Common Parameters
+    Location: Location
     VmSize: VmSize
     AdminUsername: AdminUsername
     AdminPassword: AdminPassword
@@ -221,13 +234,11 @@ module fortigateB 'fortigate.bicep' = {
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: FgVersion
     FortimanagerFqdn: FortimanagerFqdn
+    FortimanagerPassword: FortimanagerPassword
     AdminNsgId: fgAdminNsg.id
     AvailabilitySetId: empty(fgSet.id) ? fgSet.id : ''
-    LoadBalancerInfo: loadbalancer.outputs.fortigateBLoadBalancerInfo
     ExternalSubnet: externalSubnetInfo
     InternalSubnet: internalSubnetInfo
-    ExternalSubnetIP: !empty(FgbExternalSubnetIP) ? FgbExternalSubnetIP : ''
-    InternalSubnetIP: !empty(FgbInternalSubnetIP) ? FgbInternalSubnetIP : ''
   }
 }
 
@@ -249,3 +260,6 @@ Host {0}
 '''
 output fgaManagementSSHConfig string = format(fgManagementSSHConfigTemplate, fortigateA.outputs.fgName, fqdn, FgaManagementSshPort, AdminUsername)
 output fgbManagementSSHConfig string = format(fgManagementSSHConfigTemplate, fortigateB.outputs.fgName, fqdn, FgbManagementSshPort, AdminUsername)
+
+output fgaFortimanagerSharedKeyCommand string = fortigateA.outputs.fortimanagerSharedKey
+output fgbFortimanagerSharedKeyCommand string = fortigateB.outputs.fortimanagerSharedKey

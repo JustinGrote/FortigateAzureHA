@@ -28,6 +28,10 @@ param Location string = resourceGroup().location
 @description('Fully Qualified DNS Name of the Fortimanager appliance. The fortigates will auto-register with this fortigate upon startup. WARNING: As of 6.2.4 you will need to set the default "admin" password to blank temporarily to be able to click Authorize in Fortimanager and have it complete the tunnel successfully')
 param FortimanagerFqdn string = ''
 
+@secure()
+@description('Password to use for Fortimanager connectivity, similar to a pre-shared key. Once the appliance registers with the fortimanager you will need to run "exec dev replace pw <Hostname> <ThisPassword>" at the fortimanager command line for each fortigate before clicking "Authorize". This will default to a random string that will show in the outputs upon deployment')
+param FortimanagerPassword string = ''
+
 @description('SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/')
 param AdminSshPublicKeyId string = 'Id of an SSH public key resource stored in Azure'
 
@@ -160,6 +164,7 @@ resource diagStorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
 //   }
 // }
 
+// Common Config Template
 var fortigateBaseConfigTemplate = '''
 config system probe-response
  set mode http-probe
@@ -177,7 +182,23 @@ end
 {2}
 '''
 var fortigateBaseConfig = format(fortigateBaseConfigTemplate, ExternalSubnet.name, InternalSubnet.name, FortiGateAdditionalConfig)
-var fortigateFMConfig = empty(FortimanagerFqdn) ? null : '\nconfig system central-management\n set type fortimanager\n set fmg ${FortimanagerFqdn}\n end' 
+
+// Fortimanager Configuration Template
+var fortigateFMConfigTemplate = '''
+config system central-management
+ set type fortimanager
+ set fmg {0}
+end
+config system admin
+ edit admin
+ set trusthost1 0.0.0.0 255.255.255.255
+ set password {1}
+end
+'''
+
+//uniqueString is not random but is derived from AdminPassword so should be pretty unique and non-derivable without knowing the Admin Password
+var fmPassword = empty(FortimanagerPassword) ? uniqueString(deployment().name, resourceGroup().name, VmName, AdminPassword) : FortimanagerPassword
+var fortigateFMConfig = empty(FortimanagerFqdn) ? null : format(fortigateFMConfigTemplate,FortimanagerFqdn,fmPassword)
 
 var publicKey = empty(AdminSshPublicKeyId) ? null : replace(trim(reference(AdminSshPublicKeyId, '2020-06-01').publicKey),'\n','')
 var fortigateSSHKeyConfig = publicKey != null ? '\nconfig system admin\n edit ${AdminUsername}\n set ssh-public-key1 "${publicKey}"\n end' : null
@@ -261,3 +282,4 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
 }
 
 output fgName string = VmName
+output fortimanagerSharedKey string = empty(FortimanagerPassword) ? 'execute device replace pw ${VmName} ${fmPassword}' : 'Password was supplied via FortimanagerFqdn parameter and not displayed here' 
