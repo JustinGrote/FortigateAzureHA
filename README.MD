@@ -31,10 +31,25 @@ This template supports automatic connection to a Fortimanager instance and enabl
 1. Upon deployment you should see the fortigates connected to the relevant fortimanager
 1. Connect to the fortimanager and run the commands specified by the `fgaFortimanagerSharedKeyCommand` and `fgbFortimanagerSharedKeyCommand`
 1. Click `Authorize` and fortimanager should now connect and be able to manage the nodes.
-TODO: Automate this process with a Powershell Deployment Script Maybe?
+A*TODO: Automate this process with a Powershell Deployment Script Maybe?*
+
+## Using as a module
+You can use this entire repository as a module in another bicep. This functionality is forthcoming in bicep but for now you can use `git submodules`
+```
+git submodule add https://github.com/justingrote/fortigateazureha
+```
+And in your bicep config
+```
+module fortigateAzureHA 'fortigateazureha/main.bicep' = {
+  name: '${deployment().name}-FortigateAzureHA'
+  params:{
+    AdminPassword: 'changeMeToSomethingS3cure'
+  }
+}
+```
+See https://github.com/justingrote/fortigateazurehaexampleusage for an example
 
 ## Azure Powershell Deployment Examples
-
 
 **NOTE:** Az.Resources 3.3.0 has a bug where it does not compile multi-file bicep correctly, hence the intermediate build step
 
