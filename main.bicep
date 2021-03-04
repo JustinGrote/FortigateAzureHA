@@ -21,8 +21,8 @@ param FortimanagerFqdn string = ''
 @description('Username for the Fortigate virtual appliances. Defaults to fgadmin')
 param AdminUsername string = 'fgadmin'
 
-@description('SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/')
-param AdminPublicKey string = ''
+@description('Id of an SSH public key resource stored in Azure to be used for SSH login to the user defined by AdminUsername. The public key is not sensitive information.')
+param AdminSshPublicKeyId string = ''
 
 @description('Specify true for a Bring Your Own License (BYOL) deployment, otherwise the fortigate license will be included in the VM subscription cost')
 param BringYourOwnLicense bool = false
@@ -160,8 +160,6 @@ module network 'network.bicep' = if (empty(ExistingVNetId)) {
   }
 }
 
-
-//FIXME: Bicep 0.4 should have external references to use instead of this
 var internalSubnetInfo = {
   id: empty(ExistingVNetId) ? network.outputs.internalSubnet.id : '${ExistingVNetId}/subnets/${InternalSubnetName}'
   name: !empty(network.outputs.internalSubnet.name) ? network.outputs.internalSubnet.name : InternalSubnetName
@@ -197,7 +195,7 @@ module fortigateA 'fortigate.bicep' = {
     VmSize: VmSize
     AdminUsername: AdminUsername
     AdminPassword: AdminPassword
-    AdminPublicKey: AdminPublicKey
+    AdminSshPublicKeyId: AdminSshPublicKeyId
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: FgVersion
     FortimanagerFqdn: FortimanagerFqdn
@@ -219,7 +217,7 @@ module fortigateB 'fortigate.bicep' = {
     VmSize: VmSize
     AdminUsername: AdminUsername
     AdminPassword: AdminPassword
-    AdminPublicKey: AdminPublicKey
+    AdminSshPublicKeyId: AdminSshPublicKeyId
     FortigateImageSKU: fgImageSku
     FortigateImageVersion: FgVersion
     FortimanagerFqdn: FortimanagerFqdn

@@ -29,7 +29,7 @@ param Location string = resourceGroup().location
 param FortimanagerFqdn string = ''
 
 @description('SSH Public Key for the virtual machine. Format: https://www.ssh.com/ssh/key/')
-param AdminPublicKey string = ''
+param AdminSshPublicKeyId string = 'Id of an SSH public key resource stored in Azure'
 
 @description('Identifies whether to to use PAYG (on demand licensing) or BYOL license model (where license is purchased separately)')
 @allowed([
@@ -63,16 +63,6 @@ param InternalSubnetIP string = ''
 param AvailabilitySetId string = ''
 
 var vmDiagnosticStorageName = toLower(VmName)
-var vmPublicKeyConfiguration = {
-  ssh: {
-    publicKeys: [
-      {
-        path: '/home/${AdminUsername}/.ssh/authorized_keys'
-        keyData: AdminPublicKey
-      }
-    ]
-  }
-}
 
 resource nic1 'Microsoft.Network/networkInterfaces@2020-05-01' = {
   name: '${VmName}-port1'
@@ -187,8 +177,12 @@ end
 {2}
 '''
 var fortigateBaseConfig = format(fortigateBaseConfigTemplate, ExternalSubnet.name, InternalSubnet.name, FortiGateAdditionalConfig)
-var fortigateFMConfig = empty(FortimanagerFqdn) ? '' : '\nconfig system central-management\n set type fortimanager\n set fmg ${FortimanagerFqdn}\n end' 
-var fortigateConfig = base64('${fortigateBaseConfig}${fortigateFMConfig}')
+var fortigateFMConfig = empty(FortimanagerFqdn) ? null : '\nconfig system central-management\n set type fortimanager\n set fmg ${FortimanagerFqdn}\n end' 
+
+var publicKey = empty(AdminSshPublicKeyId) ? null : replace(trim(reference(AdminSshPublicKeyId, '2020-06-01').publicKey),'\n','')
+var fortigateSSHKeyConfig = publicKey != null ? '\nconfig system admin\n edit ${AdminUsername}\n set ssh-public-key1 "${publicKey}"\n end' : null
+
+var fortigateConfig = base64('${fortigateBaseConfig}${fortigateFMConfig}${fortigateSSHKeyConfig}')
 
 var availabilitySet = {
   id: AvailabilitySetId
@@ -219,7 +213,6 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
       computerName: VmName
       adminUsername: AdminUsername
       adminPassword: AdminPassword
-      linuxConfiguration: empty(AdminPublicKey) ? json('null') : vmPublicKeyConfiguration
       customData: fortigateConfig
     }
     storageProfile: {
