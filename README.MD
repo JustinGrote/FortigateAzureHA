@@ -32,3 +32,85 @@ This template supports automatic connection to a Fortimanager instance and enabl
 1. Connect to the fortimanager and run the commands specified by the `fgaFortimanagerSharedKeyCommand` and `fgbFortimanagerSharedKeyCommand`
 1. Click `Authorize` and fortimanager should now connect and be able to manage the nodes.
 TODO: Automate this process with a Powershell Deployment Script Maybe?
+
+## Azure Powershell Deployment Examples
+
+
+**NOTE:** Az.Resources 3.3.0 has a bug where it does not compile multi-file bicep correctly, hence the intermediate build step
+
+All examples include `-WhatIf` so you can see what would be deployed, remove to do it for real.
+
+### Simple Deployment (Splatting Syntax)
+```powershell
+bicep build main.bicep
+$FortigateDeploymentParams = @{
+    TemplateFile = 'main.json'
+    ResourceGroupName = 'my-rg'
+    Location = 'westus'
+    Name = 'MyFortigateDeployment'
+    #Default AdminUsername is 'fgadmin', specify AdminUsername to customize it
+    AdminPassword = 'changeme' | ConvertTo-SecureString -AsPlainText -Force
+}
+New-AzResourceGroupDeployment @FortigateDeploymentParams -WhatIf
+```
+### Simple Deployment (Parameter Syntax)
+```powershell
+bicep build main.bicep
+New-AzResourceGroupDeployment -TemplateFile main.json -ResourceGroupName 'my-rg' -Location 'westus' -Name 'MyFortigateDeployment' -AdminPassword $('changeme' | ConvertTo-SecureString -AsPlainText -Force) -WhatIf
+```
+
+### Connect to an Existing Fortimanager
+```powershell
+bicep build main.bicep
+$FortigateDeploymentParams = @{
+    TemplateFile = 'main.json'
+    ResourceGroupName = 'my-rg'
+    Location = 'westus'
+    Name = 'MyFortigateDeployment'
+    AdminPassword = 'changeme' | ConvertTo-SecureString -AsPlainText -Force
+    FortiManagerFQDN = 'myfortimanager.mycompany.com'
+    FortiManagerPassword = 'changemefortimanager' #Admin user is set to this password and is disallowed remote login. Fortimanager will use this to connect
+}
+New-AzResourceGroupDeployment @FortigateDeploymentParams -WhatIf
+```
+The fortigates will register with the Fortimanager, but you will need to run the commands specified in the `FortimanagerSharedKeyCommand` output on the fortigate prior to clicking Authorize.
+
+
+### Use Spot instances, BYOL licensing, and specify a different instance size to save cost
+```powershell
+bicep build main.bicep
+$FortigateDeploymentParams = @{
+    TemplateFile = 'main.json'
+    ResourceGroupName = 'my-rg'
+    Location = 'westus'
+    Name = 'MyFortigateDeployment'
+    AdminPassword = 'changeme' | ConvertTo-SecureString -AsPlainText -Force
+    UseSpotInstances = $true
+    BringYourOwnLicense = $true
+    VMSize = 'Standard_F2s_v2' #Must have at least two nics
+}
+New-AzResourceGroupDeployment @FortigateDeploymentParams -WhatIf
+```
+
+### Integrate with existing vNet
+```powershell
+bicep build main.bicep
+$FortigateDeploymentParams = @{
+    TemplateFile = 'main.json'
+    ResourceGroupName = 'my-rg'
+    Location = 'westus'
+    Name = 'MyFortigateDeployment'
+    AdminPassword = 'changeme' | ConvertTo-SecureString -AsPlainText -Force
+    VNetId = '/subscriptions/my-subcription-guid/myvnetname' #Fetch from vnet properties in Azure Portal
+    ExternalSubnetName = 'MyCustomExternalSubnetName'
+    InternalSubnetName = 'MyCustomTransitSubnetName'
+}
+New-AzResourceGroupDeployment @FortigateDeploymentParams -WhatIf
+```
+You will need to attach the generated route table to any subnets that you want to be forced via the fortigate's transit network.
+
+
+
+
+---
+**NOTE:** There are many other ways to specify deployment parameters than are covered here, such as the `-ParameterFile` option and the `-ParameterObject` option.
