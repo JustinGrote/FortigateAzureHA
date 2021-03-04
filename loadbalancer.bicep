@@ -75,6 +75,25 @@ resource externalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
       }
     ]
     loadBalancingRules: []
+    outboundRules: [
+      {
+        name: 'default'
+        properties: {
+          allocatedOutboundPorts: 0
+          protocol: 'All'
+          enableTcpReset: true
+          idleTimeoutInMinutes: 4
+          backendAddressPool: {
+            id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', LbName, externalLBBEName)
+          }
+          frontendIPConfigurations: [
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', LbName, externalLBFEName)
+            }
+          ]
+        }
+      }
+    ]
     inboundNatRules: [
       {
         name: '${LbName}A-Management-SSH'
