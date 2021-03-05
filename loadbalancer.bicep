@@ -178,7 +178,7 @@ resource internalLB 'Microsoft.Network/loadBalancers@2020-05-01' = {
         name: internalLBFEName
         properties: {
           privateIPAllocationMethod: empty(LbInternalSubnetIP) ? 'Dynamic' : 'Static'
-          privateIPAddress: empty(LbInternalSubnetIP) ? json('null') : LbInternalSubnetIP
+          privateIPAddress: empty(LbInternalSubnetIP) ? any(null) : LbInternalSubnetIP
           subnet: {
             id: InternalSubnetId
           }

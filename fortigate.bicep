@@ -80,7 +80,7 @@ resource nic1 'Microsoft.Network/networkInterfaces@2020-05-01' = {
         name: ExternalSubnet.name
         properties: {
           privateIPAllocationMethod: empty(ExternalSubnetIP) ? 'Dynamic' : 'Static' 
-          privateIPAddress: empty(ExternalSubnetIP) ? json('null') : ExternalSubnetIP
+          privateIPAddress: empty(ExternalSubnetIP) ? any(null) : ExternalSubnetIP
           subnet: {
             id: ExternalSubnet.id
           }
@@ -120,7 +120,7 @@ resource nic2 'Microsoft.Network/networkInterfaces@2020-05-01' = {
         name: InternalSubnet.Name
         properties: {
           privateIPAllocationMethod: empty(InternalSubnetIP) ? 'Dynamic' : 'Static' 
-          privateIPAddress: empty(InternalSubnetIP) ? json('null') : InternalSubnetIP
+          privateIPAddress: empty(InternalSubnetIP) ? any(null) : InternalSubnetIP
           subnet: {
             id: InternalSubnet.Id
           }
@@ -225,11 +225,11 @@ resource vmFortigate 'Microsoft.Compute/virtualMachines@2019-07-01' = {
     }
     //Spot instance settings
     priority: empty(AvailabilitySetId) ? 'Spot' : 'Regular' 
-    evictionPolicy: empty(AvailabilitySetId) ? 'Deallocate' : json('null')
+    evictionPolicy: empty(AvailabilitySetId) ? 'Deallocate' : any(null)
     billingProfile: {
-      maxPrice: empty(AvailabilitySetId) ? -1 : json('null')
+      maxPrice: empty(AvailabilitySetId) ? -1 : any(null)
     }
-    availabilitySet: empty(AvailabilitySetId) ? json('null') : availabilitySet
+    availabilitySet: empty(AvailabilitySetId) ? any(null) : availabilitySet
     osProfile: {
       computerName: VmName
       adminUsername: AdminUsername
